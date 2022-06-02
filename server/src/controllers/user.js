@@ -9,17 +9,33 @@ const jwt = require('jsonwebtoken')
 
 exports.getUsers = async(req,res)=>{
     try {
-      
+        const {search,role,status} = req.body
+
         const users = await user.findAll({
+            order:[
+                ['fullName','ASC']
+            ],
             attributes:{
-                exclude:["password","role","createdAt","updatedAt"]
+                exclude:["password","createdAt","updatedAt"]
             }
+        })
+
+        const results = users.filter((data)=>{
+            let dataSearch = new RegExp(search,'i')
+            let dataRole = role
+            let dataStatus = status
+            let searchId = data.id.toString()
+            let searchEmail = data.email
+            let searchRole = data.role
+            let searchStatus = data.userStatus
+
+            return (searchId.match(dataSearch) || searchEmail.match(dataSearch)) && searchRole.match(dataRole) && dataStatus === "" ? searchStatus.match(dataStatus) : searchStatus === dataStatus
         })
         
         res.send({
             status:'success',
             data:{
-                users: users
+                users: results
             }
         })
     } catch (error) {

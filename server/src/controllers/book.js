@@ -23,8 +23,8 @@ const deleteFile = promisify(fs.unlink)
 exports.AddBook = async (req,res) =>{
     
     try {
-        const bookName = req.file.filename
-        console.log(req.file.filename)
+        const bookName = req.files[0].filename
+        const bookCover = req.files[1].filename
         const data = {
             title: req.body.title,
             publicationDate: req.body.publicationDate,
@@ -33,6 +33,7 @@ exports.AddBook = async (req,res) =>{
             isbn: req.body.isbn,
             about: req.body.about,
             bookFile: bookName,
+            bookCover: bookCover
         }
         const newBook = await Book.create(data)
         const {id,title,publicationDate,pages,author,isbn,about} = newBook
@@ -47,7 +48,8 @@ exports.AddBook = async (req,res) =>{
                     author,
                     isbn,
                     about,
-                    bookFile: req.file.filename
+                    bookFile: req.files[0].filename,
+                    bookCover:req.files[1].filename
                 }
             }
         })
@@ -64,7 +66,7 @@ exports.AddBook = async (req,res) =>{
 exports.getBooks = async (req,res) =>{
     
     try {
-
+        const {search, date} = req.body
         const books = await Book.findAll({
             attributes:{
                 exclude:['createdAt','updatedAt']
@@ -82,13 +84,26 @@ exports.getBooks = async (req,res) =>{
                 author: book.author,
                 isbn: book.isbn,
                 about: book.about,
-                bookFile: book.bookFile
+                bookFile: book.bookFile,
+                bookCover: book.bookCover
             }
+        })
+
+        const results = books.filter((data)=>{
+            let dataSearch = new RegExp(search,'i')
+            let dataDate = new RegExp(date,'g')
+            let searchId = data.id.toString()
+            let searchTitle = data.title
+            let searchAuthor = data.author
+            let searchISBN = data.isbn
+            let searchDate = data.publicationDate
+
+            return (searchId.match(dataSearch) || searchTitle.match(dataSearch) || searchAuthor.match(dataSearch) || searchISBN.match(dataSearch)) && searchDate.match(dataDate)
         })
         res.send({
             status:'success',
             data:{
-                data
+                results
             }
         })
         
@@ -121,11 +136,13 @@ exports.getBook = async (req,res) =>{
                 id : book.id,
                 title : book.title,
                 publicationDate: bookDate,
+                fullDatePublication:book.publicationDate,
                 pages : book.pages,
                 author: book.author,
                 isbn: book.isbn,
                 about: book.about,
-                bookFile: book.bookFile
+                bookFile: book.bookFile,
+                bookCover:book.bookCover
             }
         })
         
@@ -147,6 +164,7 @@ exports.updateBook = async (req,res) =>{
                 id
             }
         })
+        console.log(req.body)
         const book = await Book.update(req.body,{
             where:{
                 id
@@ -165,11 +183,14 @@ exports.updateBook = async (req,res) =>{
         if (req.body.bookFile){
             deleteFile(`uploads/${getBook.bookFile}`)
         }
+        if(req.body.bookCover){
+            deleteFile(`uploads/${getBook.bookCover}`)
+        }
 
         res.send({
             status:'success',
             data:{
-                book: dataBook
+                book: book
             }
         })
 

@@ -1,12 +1,9 @@
-const {userListBook,profile} = require('../../models')
+const {userListBook,profile,Book} = require('../../models')
+const { decodeJWT } = require('./webservice')
 
 exports.addToList = async (req,res) =>{
     try {
-
-        const authHeader = req.header("Authorization")
-    
-        const token = authHeader && authHeader.split(' ')[1]
-        const dataToken = parseJwt(token)
+        const dataToken = decodeJWT(req,res)
 
         const profileId = await profile.findOne({
             where:{
@@ -17,6 +14,20 @@ exports.addToList = async (req,res) =>{
         req.body.profileId = profileId.id
 
         const data = req.body
+
+        const checkBook = await userListBook.findOne({
+            where:{
+                bookId: data.bookId
+            }
+        })
+
+        if(checkBook){
+            return res.status(200).send({
+                status:'failed',
+                message:'Book already added'
+            })
+        }
+
 
         const newListBook = await userListBook.create(data)
 
@@ -39,12 +50,73 @@ exports.addToList = async (req,res) =>{
     }
 }
 
-function parseJwt (token) {
-    var base64Url = token.split('.')[1];
-    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
+exports.deleteList = async(req,res) =>{
+    try {
+        
+        const dataToken = decodeJWT(req,res)
+        const {bookId} = req.body
+        const getProfile = await profile.findOne({
+            where:{
+                userId: dataToken.id
+            }
+        })
 
-    return JSON.parse(jsonPayload);
-};
+        const deleteList = await userListBook.destroy({
+            where:{
+                profileId: getProfile.id,
+                bookId
+            }
+        })
+
+        res.status(200).send({
+            status:'success',
+            data: deleteList,
+            message:'Delete user list book success'
+        })
+
+        
+    } catch (error) {
+        console.log(error)
+        res.status(400).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
+
+exports.getList = async(req,res) => {
+    try {
+        const dataToken = decodeJWT(req,res)
+
+        const getProfile = await profile.findOne({
+            where:{
+                userId: dataToken.id
+            }
+        })
+        const getList = await userListBook.findAll({
+            where: {
+                profileId: getProfile.id
+            }
+        })
+        
+        const getBook = await Promise.all(getList.map(async(data)=>{
+            const get = await Book.findOne({
+                where:{
+                    id: data.bookId
+                }
+            })
+            return get
+        }))
+        console.log(getBook)
+        res.status(200).send({
+            status:'success',
+            data: getBook
+        })
+    } catch (error) {
+        console.log(error)
+        res.send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}

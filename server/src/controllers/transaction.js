@@ -195,7 +195,8 @@ exports.getTransaction = async (req,res) =>{
 exports.getTransactions = async (req,res) => {
     try {
 
-        
+        const {search,userStatus,paymentStatus} = req.body
+
         const allTransaction = await transaction.findAll({
             include:[
                 {
@@ -210,13 +211,25 @@ exports.getTransactions = async (req,res) => {
                 exclude:['createdAt','updatedAt','userId']
             }
         })
+
+        const results = allTransaction.filter((data)=>{
+            let dataSearch = new RegExp(search,'i')
+            let dataStatusUser = userStatus
+            let dataStatusPayment = new RegExp(paymentStatus,'g')
+            let searchId = data.id.toString()
+            let searchName = data.users.fullName
+            let searchStatusUser = data.users.userStatus
+            let searchStatusPayment = data.paymentStatus
+
+            return (searchId.match(dataSearch) || searchName.match(dataSearch)) && dataStatusUser === "" ? searchStatusUser.match(dataStatusUser) : searchStatusUser === dataStatusUser  && searchStatusPayment.match(dataStatusPayment)
+        })
         
         
 
         res.status(200).send({
             status:'success',
             data: {
-                transaction: allTransaction
+                transaction: results
             }
         })
         

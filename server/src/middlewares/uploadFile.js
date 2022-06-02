@@ -64,7 +64,7 @@ exports.uploadFile = (imageFile) => {
   }
 };
 
-exports.uploadFileBook = (bookFile) => {
+exports.uploadFileBook = (bookFile,bookCover) => {
     // code here
     const storage = multer.diskStorage({
       destination: function (req, file, cb) {
@@ -74,7 +74,7 @@ exports.uploadFileBook = (bookFile) => {
         cb(null, Date.now() + '-' + file.originalname.replace(/\s/g, ""))
       }
     })
-  
+
     const fileFilter = function (req, file, cb) {
       // "image.pdf"
       // <input type="file">
@@ -88,7 +88,7 @@ exports.uploadFileBook = (bookFile) => {
       }
       cb(null, true)
     }
-  
+    
     const sizeInMB = 100
     const maxSize = sizeInMB * 1000 * 1000
   
@@ -98,15 +98,14 @@ exports.uploadFileBook = (bookFile) => {
       limits: {
         fileSize: maxSize
       }
-    }).single(bookFile)
+    }).any()
   
     return (req, res, next) => {
       upload(req, res, function (err) {
         if (req.fileValidationError) {
           return res.status(400).send(req.fileValidationError)
         }
-  
-        if (!req.file && !err) {
+        if (!req.files && !err) {
           return res.status(400).send({
             message: "Please select file to upload"
           })
